@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 
-const Contact = require("./models/contact");
+const Contact = require("./models/Contact");
 
 dotenv.config();
 

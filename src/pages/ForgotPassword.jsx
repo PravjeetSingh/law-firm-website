@@ -1,87 +1,54 @@
 import { useState } from "react";
 
-function AdminLogin({ onLogin }) {
-
+function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-
-  const handleLogin = async (e) => {
-
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    
+    setMessage("");
     setError("");
     setLoading(true);
 
     try {
-
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/admin/login`,
+        `${import.meta.env.VITE_API_URL}/api/admin/forgot-password`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             email,
-            password,
           }),
         }
       );
 
-
       const data = await response.json();
 
-
       if (!response.ok) {
-
-        setError(
-          data.message || "Invalid email or password"
-        );
-
-        setLoading(false);
-
+        setError(data.message || "Unable to process request");
         return;
       }
 
-
-      /* Save JWT */
-
-      localStorage.setItem(
-        "adminToken",
-        data.token
+      setMessage(
+        "If this email is registered, a password reset link has been sent."
       );
 
-
-      /* Open dashboard */
-
-      onLogin();
+      setEmail("");
 
     } catch (error) {
-
       console.error(error);
-
-      setError(
-        "Unable to connect to the server"
-      );
-
+      setError("Unable to connect to the server");
     } finally {
-
       setLoading(false);
-
     }
-
   };
 
-
   return (
-
     <div className="admin-login-page">
 
       <div className="login-card">
@@ -90,14 +57,13 @@ function AdminLogin({ onLogin }) {
           ⚖️
         </div>
 
-        <h1>Lawyer Login</h1>
+        <h1>Forgot Password?</h1>
 
         <p className="login-subtitle">
-          Admin access to client enquiries
+          Enter your admin email to receive a password reset link.
         </p>
 
-
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
 
           <div className="form-group">
 
@@ -105,33 +71,13 @@ function AdminLogin({ onLogin }) {
 
             <input
               type="email"
-              placeholder="Enter your email"
+              placeholder="Enter your admin email"
               value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
 
           </div>
-
-
-          <div className="form-group">
-
-            <label>Password</label>
-
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
-              required
-            />
-
-          </div>
-
 
           {error && (
             <div className="login-error">
@@ -139,36 +85,41 @@ function AdminLogin({ onLogin }) {
             </div>
           )}
 
+          {message && (
+            <div className="login-success">
+              {message}
+            </div>
+          )}
 
           <button
             type="submit"
             className="login-btn"
             disabled={loading}
           >
-
             {loading
-              ? "Logging in..."
-              : "Login to Dashboard →"}
-
+              ? "Sending..."
+              : "Send Reset Link →"}
           </button>
-          <div className="forgot-password">
-  <button
-    type="button"
-    onClick={() => {
-      window.location.href = "/forgot-password";
-    }}
-  >
-    Forgot Password?
-  </button>
-</div>
 
         </form>
+
+        <div className="forgot-password">
+
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/admin";
+            }}
+          >
+            ← Back to Login
+          </button>
+
+        </div>
 
       </div>
 
     </div>
-
   );
 }
 
-export default AdminLogin;
+export default ForgotPassword;

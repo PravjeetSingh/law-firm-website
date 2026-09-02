@@ -3,8 +3,19 @@ import "./App.css";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
 
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
 
 function App() {
+
+if (window.location.pathname === "/forgot-password") {
+  return <ForgotPassword />;
+}
+
+if (window.location.pathname.startsWith("/reset-password/")) {
+  return <ResetPassword />;
+}
 
   const path = window.location.pathname;
 

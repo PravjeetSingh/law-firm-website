@@ -1301,3 +1301,30 @@ footer {
   }
 
 }
+
+.forgot-password {
+  text-align: center;
+  margin-top: 18px;
+}
+
+.forgot-password button {
+  background: none;
+  border: none;
+  color: #8b6f47;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.forgot-password button:hover {
+  text-decoration: underline;
+}
+
+.login-success {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 14px;
+}

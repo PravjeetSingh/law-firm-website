@@ -5,8 +5,8 @@ const dotenv = require("dotenv");
 
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const { Resend } = require("resend");
 
 const Contact = require("./models/Contact");
 const Admin = require("./models/Admin");
@@ -19,22 +19,7 @@ dotenv.config();
 
 const app = express();
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("EMAIL CONFIGURATION ERROR:");
-    console.error(error);
-  } else {
-    console.log("EMAIL SERVER READY");
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /* =========================
    Middleware
@@ -168,10 +153,6 @@ app.post("/api/admin/login", async (req, res) => {
    Forgot Password API
 ========================= */
 
-/* =========================
-   Forgot Password API
-========================= */
-
 app.post("/api/admin/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -182,7 +163,7 @@ app.post("/api/admin/forgot-password", async (req, res) => {
       });
     }
 
-    // Don't reveal whether an email exists
+    // Do not reveal whether an email is registered
     if (email !== process.env.ADMIN_EMAIL) {
       return res.status(200).json({
         message:
@@ -193,21 +174,23 @@ app.post("/api/admin/forgot-password", async (req, res) => {
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    // Hash token before storing it
+    // Hash token before storing it in MongoDB
     const resetTokenHash = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
 
-    // Token expires after 15 minutes
+    // Token valid for 15 minutes
     const resetTokenExpiry = new Date(
       Date.now() + 15 * 60 * 1000
     );
 
     // Find admin
-    let admin = await Admin.findOne({ email });
+    let admin = await Admin.findOne({
+      email: process.env.ADMIN_EMAIL,
+    });
 
-    // Create admin if it doesn't exist
+    // Create admin document if it doesn't exist
     if (!admin) {
       admin = new Admin({
         email: process.env.ADMIN_EMAIL,
@@ -220,67 +203,155 @@ app.post("/api/admin/forgot-password", async (req, res) => {
 
     await admin.save();
 
-    // Create reset URL
+    // Frontend reset URL
     const resetUrl =
       `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    // Send email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
+    console.log("Sending password reset email...");
+
+    // Send email using Resend API
+    const { data, error } = await resend.emails.send({
+      from: "Lawyer Website <onboarding@resend.dev>",
+      to: [email],
       subject: "Lawyer Website - Password Reset",
-
       html: `
-        <div style="
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin: auto;
-          padding: 30px;
-          border: 1px solid #ddd;
-          border-radius: 10px;
-        ">
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <title>Password Reset</title>
+          </head>
 
-          <h2 style="color:#333;">
-            Lawyer Admin Password Reset
-          </h2>
-
-          <p>
-            You requested to reset your admin password.
-          </p>
-
-          <p>
-            Click the button below to create a new password.
-          </p>
-
-          <a
-            href="${resetUrl}"
+          <body
             style="
-              display:inline-block;
-              padding:12px 22px;
-              background:#8b6f47;
-              color:white;
-              text-decoration:none;
-              border-radius:6px;
-              margin-top:10px;
+              margin:0;
+              padding:0;
+              background:#f5f5f5;
+              font-family:Arial,Helvetica,sans-serif;
             "
           >
-            Reset Password
-          </a>
 
-          <p style="margin-top:25px;">
-            This link will expire in <strong>15 minutes</strong>.
-          </p>
+            <div
+              style="
+                max-width:600px;
+                margin:40px auto;
+                background:#ffffff;
+                padding:40px;
+                border-radius:10px;
+                box-shadow:0 2px 10px rgba(0,0,0,0.08);
+              "
+            >
 
-          <p>
-            If you did not request this password reset,
-            you can safely ignore this email.
-          </p>
+              <h2
+                style="
+                  margin-top:0;
+                  color:#222;
+                "
+              >
+                Password Reset Request
+              </h2>
 
-        </div>
+              <p
+                style="
+                  color:#555;
+                  font-size:16px;
+                  line-height:1.6;
+                "
+              >
+                We received a request to reset the administrator
+                password for your Lawyer Website.
+              </p>
+
+              <p
+                style="
+                  color:#555;
+                  font-size:16px;
+                  line-height:1.6;
+                "
+              >
+                Click the button below to create a new password.
+              </p>
+
+              <div style="margin:30px 0;">
+                <a
+                  href="${resetUrl}"
+                  style="
+                    display:inline-block;
+                    padding:14px 24px;
+                    background:#222;
+                    color:#ffffff;
+                    text-decoration:none;
+                    border-radius:6px;
+                    font-size:16px;
+                  "
+                >
+                  Reset Password
+                </a>
+              </div>
+
+              <p
+                style="
+                  color:#777;
+                  font-size:14px;
+                  line-height:1.6;
+                "
+              >
+                This password reset link will expire in 15 minutes.
+              </p>
+
+              <p
+                style="
+                  color:#777;
+                  font-size:14px;
+                  line-height:1.6;
+                "
+              >
+                If you did not request a password reset, you can
+                safely ignore this email.
+              </p>
+
+              <hr
+                style="
+                  border:none;
+                  border-top:1px solid #eeeeee;
+                  margin:30px 0;
+                "
+              />
+
+              <p
+                style="
+                  color:#999;
+                  font-size:12px;
+                "
+              >
+                Lawyer Website Admin System
+              </p>
+
+            </div>
+
+          </body>
+        </html>
       `,
     });
 
-    res.status(200).json({
+    // Resend returned an error
+    if (error) {
+      console.error("Resend email error:", error);
+
+      // Remove the reset token if email could not be sent
+      admin.resetTokenHash = null;
+      admin.resetTokenExpiry = null;
+      await admin.save();
+
+      return res.status(500).json({
+        message: "Unable to send reset email",
+      });
+    }
+
+    console.log("Password reset email sent successfully.");
+    console.log("Resend email ID:", data?.id);
+
+    return res.status(200).json({
       message:
         "If this email is registered, a password reset link has been sent.",
     });
@@ -288,20 +359,17 @@ app.post("/api/admin/forgot-password", async (req, res) => {
   } catch (error) {
     console.error("Forgot password error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Unable to send reset email",
     });
   }
 });
 
-
 /* =========================
    Reset Password API
 ========================= */
 
-/* =========================
-   Reset Password API
-========================= */
+
 
 app.post("/api/admin/reset-password", async (req, res) => {
   try {
